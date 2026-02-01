@@ -2,6 +2,8 @@
 
 A mobile-friendly tire pressure converter with retro 7-segment LED displays.
 
+![Screenshot](screenshot.png)
+
 ## Features
 
 - Bidirectional PSI to BAR conversion
