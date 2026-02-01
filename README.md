@@ -2,7 +2,7 @@
 
 A mobile-friendly tire pressure converter with retro 7-segment LED displays.
 
-![Screenshot](screenshot.png)
+<img src="screenshot.png" width="300" alt="Screenshot">
 
 ## Features
 
