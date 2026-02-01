@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
@@ -103,13 +104,37 @@
         }
 
         /* Segment positions */
-        .segment.a { top: 0; }
-        .segment.b { top: 6px; right: 0; }
-        .segment.c { top: 36px; right: 0; }
-        .segment.d { bottom: 0; }
-        .segment.e { top: 36px; left: 0; }
-        .segment.f { top: 6px; left: 0; }
-        .segment.g { top: 32px; }
+        .segment.a {
+            top: 0;
+        }
+
+        .segment.b {
+            top: 6px;
+            right: 0;
+        }
+
+        .segment.c {
+            top: 36px;
+            right: 0;
+        }
+
+        .segment.d {
+            bottom: 0;
+        }
+
+        .segment.e {
+            top: 36px;
+            left: 0;
+        }
+
+        .segment.f {
+            top: 6px;
+            left: 0;
+        }
+
+        .segment.g {
+            top: 32px;
+        }
 
         /* Lit segment (red glow) */
         .segment.on {
@@ -146,8 +171,15 @@
         }
 
         @keyframes bounce {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-3px); }
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-3px);
+            }
         }
 
         /* Typical range indicator */
@@ -165,7 +197,60 @@
             align-items: center;
             color: #64ffda;
             font-size: 1.5rem;
-            opacity: 0.5;
+            opacity: 0.6;
+            cursor: pointer;
+            padding: 10px;
+            border-radius: 50%;
+            width: 44px;
+            height: 44px;
+            margin: 0 auto;
+            transition: all 0.2s;
+        }
+
+        .swap-indicator:hover {
+            opacity: 1;
+            background: rgba(100, 255, 218, 0.1);
+        }
+
+        .swap-indicator:active {
+            transform: scale(0.95);
+        }
+
+        /* Animation for swapping */
+        .unit-section {
+            transition: transform 0.3s ease;
+        }
+
+        .converter.swapping .unit-section:first-of-type {
+            animation: slideDown 0.3s ease;
+        }
+
+        .converter.swapping .unit-section:last-of-type {
+            animation: slideUp 0.3s ease;
+        }
+
+        @keyframes slideDown {
+            0% {
+                transform: translateY(-20px);
+                opacity: 0.5;
+            }
+
+            100% {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideUp {
+            0% {
+                transform: translateY(20px);
+                opacity: 0.5;
+            }
+
+            100% {
+                transform: translateY(0);
+                opacity: 1;
+            }
         }
 
         @media (max-width: 360px) {
@@ -173,26 +258,47 @@
                 width: 32px;
                 height: 56px;
             }
+
             .segment.h {
                 width: 24px;
                 height: 5px;
                 left: 4px;
             }
+
             .segment.v {
                 width: 5px;
                 height: 22px;
             }
-            .segment.b, .segment.c { right: 0; }
-            .segment.e, .segment.f { left: 0; }
-            .segment.g { top: 26px; }
-            .segment.c, .segment.e { top: 29px; }
-            .segment.b, .segment.f { top: 5px; }
+
+            .segment.b,
+            .segment.c {
+                right: 0;
+            }
+
+            .segment.e,
+            .segment.f {
+                left: 0;
+            }
+
+            .segment.g {
+                top: 26px;
+            }
+
+            .segment.c,
+            .segment.e {
+                top: 29px;
+            }
+
+            .segment.b,
+            .segment.f {
+                top: 5px;
+            }
         }
     </style>
 </head>
+
 <body>
     <h1>Tire Pressure Converter</h1>
-    
     <div class="converter">
         <div class="unit-section">
             <div class="unit-label">PSI</div>
@@ -322,11 +428,10 @@
             const handleMove = (e) => {
                 if (!isDragging) return;
                 e.preventDefault();
-                
                 const currentY = e.touches ? e.touches[0].clientY : e.clientY;
                 const deltaY = startY - currentY;
                 const sensitivity = getSensitivity();
-                
+
                 if (unit === 'psi') {
                     psiValue = Math.max(PSI_MIN, Math.min(PSI_MAX, startValue + deltaY * sensitivity));
                     updateFromPSI();
@@ -373,7 +478,7 @@
             displayEl.addEventListener('wheel', (e) => {
                 e.preventDefault();
                 const delta = e.deltaY > 0 ? -1 : 1;
-                
+
                 if (unit === 'psi') {
                     psiValue = Math.max(PSI_MIN, Math.min(PSI_MAX, psiValue + delta));
                     updateFromPSI();
@@ -385,18 +490,41 @@
             }, { passive: false });
         }
 
+        // Swap display order
+        function swapDisplays() {
+            const converter = document.querySelector('.converter');
+            const sections = converter.querySelectorAll('.unit-section');
+            const swapBtn = document.querySelector('.swap-indicator');
+
+            // Add animation class
+            converter.classList.add('swapping');
+
+            // Swap the DOM elements
+            converter.insertBefore(sections[1], sections[0]);
+            converter.insertBefore(swapBtn, sections[0]);
+
+            // Remove animation class after animation completes
+            setTimeout(() => {
+                converter.classList.remove('swapping');
+            }, 300);
+        }
+
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
             // Initialize all digit displays
             document.querySelectorAll('.digit').forEach(initDigit);
-            
+
             // Set up touch handling
             setupTouchHandling(document.getElementById('psi-display'));
             setupTouchHandling(document.getElementById('bar-display'));
-            
+
+            // Set up swap button
+            document.querySelector('.swap-indicator').addEventListener('click', swapDisplays);
+
             // Initial display update
             updateFromPSI();
         });
     </script>
 </body>
+
 </html>
