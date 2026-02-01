@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>PSI ↔ BAR Converter</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            color: #fff;
+            overflow: hidden;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            margin-bottom: 30px;
+            text-align: center;
+            color: #8892b0;
+            font-weight: 300;
+            letter-spacing: 2px;
+        }
+
+        .converter {
+            display: flex;
+            flex-direction: column;
+            gap: 40px;
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .unit-section {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+        }
+
+        .unit-label {
+            font-size: 0.9rem;
+            color: #64ffda;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .display-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            touch-action: none;
+            cursor: ns-resize;
+            padding: 15px 0;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .display-container.active {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+        }
+
+        /* 7-Segment Display */
+        .digit {
+            position: relative;
+            width: 40px;
+            height: 70px;
+        }
+
+        .segment {
+            position: absolute;
+            background: #0a192f;
+            transition: background 0.1s, box-shadow 0.1s;
+        }
+
+        /* Horizontal segments */
+        .segment.h {
+            width: 30px;
+            height: 6px;
+            left: 5px;
+            clip-path: polygon(10% 0, 90% 0, 100% 50%, 90% 100%, 10% 100%, 0 50%);
+        }
+
+        /* Vertical segments */
+        .segment.v {
+            width: 6px;
+            height: 28px;
+            clip-path: polygon(50% 0, 100% 10%, 100% 90%, 50% 100%, 0 90%, 0 10%);
+        }
+
+        /* Segment positions */
+        .segment.a { top: 0; }
+        .segment.b { top: 6px; right: 0; }
+        .segment.c { top: 36px; right: 0; }
+        .segment.d { bottom: 0; }
+        .segment.e { top: 36px; left: 0; }
+        .segment.f { top: 6px; left: 0; }
+        .segment.g { top: 32px; }
+
+        /* Lit segment (red glow) */
+        .segment.on {
+            background: #ff6b6b;
+            box-shadow: 0 0 10px #ff6b6b, 0 0 20px rgba(255, 107, 107, 0.5);
+        }
+
+        /* Decimal point */
+        .decimal {
+            width: 8px;
+            height: 8px;
+            background: #0a192f;
+            border-radius: 50%;
+            align-self: flex-end;
+            margin-bottom: 5px;
+            transition: background 0.1s, box-shadow 0.1s;
+        }
+
+        .decimal.on {
+            background: #ff6b6b;
+            box-shadow: 0 0 10px #ff6b6b, 0 0 20px rgba(255, 107, 107, 0.5);
+        }
+
+        .hint {
+            text-align: center;
+            font-size: 0.75rem;
+            color: #5a6a8a;
+            margin-top: 10px;
+        }
+
+        .hint span {
+            display: inline-block;
+            animation: bounce 2s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-3px); }
+        }
+
+        /* Typical range indicator */
+        .range-info {
+            text-align: center;
+            font-size: 0.7rem;
+            color: #4a5a7a;
+            margin-top: 8px;
+        }
+
+        /* Swap button */
+        .swap-indicator {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #64ffda;
+            font-size: 1.5rem;
+            opacity: 0.5;
+        }
+
+        @media (max-width: 360px) {
+            .digit {
+                width: 32px;
+                height: 56px;
+            }
+            .segment.h {
+                width: 24px;
+                height: 5px;
+                left: 4px;
+            }
+            .segment.v {
+                width: 5px;
+                height: 22px;
+            }
+            .segment.b, .segment.c { right: 0; }
+            .segment.e, .segment.f { left: 0; }
+            .segment.g { top: 26px; }
+            .segment.c, .segment.e { top: 29px; }
+            .segment.b, .segment.f { top: 5px; }
+        }
+    </style>
+</head>
+<body>
+    <h1>Tire Pressure Converter</h1>
+    
+    <div class="converter">
+        <div class="unit-section">
+            <div class="unit-label">PSI</div>
+            <div class="display-container" id="psi-display" data-unit="psi">
+                <div class="digit" data-position="0"></div>
+                <div class="digit" data-position="1"></div>
+            </div>
+            <div class="hint"><span>↕</span> Slide to adjust</div>
+            <div class="range-info">Car tires: 25-45 PSI</div>
+        </div>
+
+        <div class="swap-indicator">⇅</div>
+
+        <div class="unit-section">
+            <div class="unit-label">BAR</div>
+            <div class="display-container" id="bar-display" data-unit="bar">
+                <div class="digit" data-position="0"></div>
+                <div class="decimal on"></div>
+                <div class="digit" data-position="1"></div>
+            </div>
+            <div class="hint"><span>↕</span> Slide to adjust</div>
+            <div class="range-info">Car tires: 1.7-3.1 BAR</div>
+        </div>
+    </div>
+
+    <script>
+        // Segment patterns for digits 0-9
+        // Segments: a(top), b(top-right), c(bottom-right), d(bottom), e(bottom-left), f(top-left), g(middle)
+        const SEGMENT_PATTERNS = {
+            0: ['a', 'b', 'c', 'd', 'e', 'f'],
+            1: ['b', 'c'],
+            2: ['a', 'b', 'd', 'e', 'g'],
+            3: ['a', 'b', 'c', 'd', 'g'],
+            4: ['b', 'c', 'f', 'g'],
+            5: ['a', 'c', 'd', 'f', 'g'],
+            6: ['a', 'c', 'd', 'e', 'f', 'g'],
+            7: ['a', 'b', 'c'],
+            8: ['a', 'b', 'c', 'd', 'e', 'f', 'g'],
+            9: ['a', 'b', 'c', 'd', 'f', 'g']
+        };
+
+        // Conversion constants
+        const PSI_TO_BAR = 0.0689476;
+        const BAR_TO_PSI = 14.5038;
+
+        // Value limits
+        const PSI_MIN = 0;
+        const PSI_MAX = 99;
+        const BAR_MIN = 0;
+        const BAR_MAX = 6.9;
+
+        // Current values
+        let psiValue = 32; // Default typical car tire pressure
+        let barValue = psiValue * PSI_TO_BAR;
+
+        // Initialize displays
+        function initDigit(digitEl) {
+            const segments = ['a', 'b', 'c', 'd', 'e', 'f', 'g'];
+            segments.forEach(seg => {
+                const segEl = document.createElement('div');
+                segEl.className = `segment ${seg} ${seg === 'a' || seg === 'd' || seg === 'g' ? 'h' : 'v'}`;
+                segEl.dataset.segment = seg;
+                digitEl.appendChild(segEl);
+            });
+        }
+
+        function setDigit(digitEl, number) {
+            const pattern = SEGMENT_PATTERNS[number] || [];
+            const segments = digitEl.querySelectorAll('.segment');
+            segments.forEach(seg => {
+                const segName = seg.dataset.segment;
+                if (pattern.includes(segName)) {
+                    seg.classList.add('on');
+                } else {
+                    seg.classList.remove('on');
+                }
+            });
+        }
+
+        function updatePSIDisplay() {
+            const display = document.getElementById('psi-display');
+            const digits = display.querySelectorAll('.digit');
+            const psiStr = Math.round(psiValue).toString().padStart(2, '0');
+            digits.forEach((digit, i) => {
+                setDigit(digit, parseInt(psiStr[i]));
+            });
+        }
+
+        function updateBARDisplay() {
+            const display = document.getElementById('bar-display');
+            const digits = display.querySelectorAll('.digit');
+            const barStr = barValue.toFixed(1).replace('.', '');
+            digits.forEach((digit, i) => {
+                setDigit(digit, parseInt(barStr[i]));
+            });
+        }
+
+        function updateFromPSI() {
+            barValue = Math.max(BAR_MIN, Math.min(BAR_MAX, psiValue * PSI_TO_BAR));
+            updatePSIDisplay();
+            updateBARDisplay();
+        }
+
+        function updateFromBAR() {
+            psiValue = Math.max(PSI_MIN, Math.min(PSI_MAX, barValue * BAR_TO_PSI));
+            updatePSIDisplay();
+            updateBARDisplay();
+        }
+
+        // Touch/Mouse handling
+        function setupTouchHandling(displayEl) {
+            let startY = 0;
+            let startValue = 0;
+            let isDragging = false;
+            const unit = displayEl.dataset.unit;
+
+            const getSensitivity = () => unit === 'psi' ? 0.5 : 0.02;
+
+            const handleStart = (e) => {
+                e.preventDefault();
+                isDragging = true;
+                displayEl.classList.add('active');
+                startY = e.touches ? e.touches[0].clientY : e.clientY;
+                startValue = unit === 'psi' ? psiValue : barValue;
+            };
+
+            const handleMove = (e) => {
+                if (!isDragging) return;
+                e.preventDefault();
+                
+                const currentY = e.touches ? e.touches[0].clientY : e.clientY;
+                const deltaY = startY - currentY;
+                const sensitivity = getSensitivity();
+                
+                if (unit === 'psi') {
+                    psiValue = Math.max(PSI_MIN, Math.min(PSI_MAX, startValue + deltaY * sensitivity));
+                    updateFromPSI();
+                } else {
+                    barValue = Math.max(BAR_MIN, Math.min(BAR_MAX, startValue + deltaY * sensitivity));
+                    updateFromBAR();
+                }
+            };
+
+            const handleEnd = () => {
+                isDragging = false;
+                displayEl.classList.remove('active');
+                // Round PSI to whole number
+                if (unit === 'psi') {
+                    psiValue = Math.round(psiValue);
+                    updateFromPSI();
+                } else {
+                    // Round BAR to 1 decimal
+                    barValue = Math.round(barValue * 10) / 10;
+                    updateFromBAR();
+                }
+            };
+
+            // Touch events
+            displayEl.addEventListener('touchstart', handleStart, { passive: false });
+            displayEl.addEventListener('touchmove', handleMove, { passive: false });
+            displayEl.addEventListener('touchend', handleEnd);
+            displayEl.addEventListener('touchcancel', handleEnd);
+
+            // Mouse events for desktop testing
+            displayEl.addEventListener('mousedown', handleStart);
+            document.addEventListener('mousemove', (e) => {
+                if (isDragging && displayEl.classList.contains('active')) {
+                    handleMove(e);
+                }
+            });
+            document.addEventListener('mouseup', () => {
+                if (isDragging && displayEl.classList.contains('active')) {
+                    handleEnd();
+                }
+            });
+
+            // Mouse wheel support
+            displayEl.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const delta = e.deltaY > 0 ? -1 : 1;
+                
+                if (unit === 'psi') {
+                    psiValue = Math.max(PSI_MIN, Math.min(PSI_MAX, psiValue + delta));
+                    updateFromPSI();
+                } else {
+                    barValue = Math.max(BAR_MIN, Math.min(BAR_MAX, barValue + delta * 0.1));
+                    barValue = Math.round(barValue * 10) / 10;
+                    updateFromBAR();
+                }
+            }, { passive: false });
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            // Initialize all digit displays
+            document.querySelectorAll('.digit').forEach(initDigit);
+            
+            // Set up touch handling
+            setupTouchHandling(document.getElementById('psi-display'));
+            setupTouchHandling(document.getElementById('bar-display'));
+            
+            // Initial display update
+            updateFromPSI();
+        });
+    </script>
+</body>
+</html>
